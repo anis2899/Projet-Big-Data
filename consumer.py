@@ -8,7 +8,6 @@ from pyspark.sql import SparkSession
 from pyspark.sql.types import *
 from pyspark.sql.functions import explode
 from kafka import KafkaConsumer
-##import pandas as pd
 def process_msg(msg):
     print(msg.offset)
     print(json.loads(msg.value))
@@ -21,6 +20,7 @@ spark = (SparkSession
          .getOrCreate())
 spark.sparkContext.setLogLevel("WARN")
 c = KafkaConsumer('Cards', bootstrap_servers=['kafka:9093'], api_version=(2,6,0))
+##Le schema  d'une carte monstre apres nettoyage
 schema_monster = StructType([
   StructField('atk', LongType(), True),
   StructField('attribute', StringType(), True),
@@ -32,6 +32,7 @@ schema_monster = StructType([
   StructField('race', StringType(), True),
   StructField('type', StringType(), True),
   ])
+##Le schema d'une carte magie/piege apres nettoyage
 schema_magic_trap = StructType([
   StructField('card_prices',ArrayType(MapType(StringType(),StringType(),True),True),True),
   StructField('card_sets',ArrayType(MapType(StringType(),StringType(),True),True),True),
@@ -47,16 +48,22 @@ for msg in c :
     count+=1
     data=[json.loads(msg.value)]
     df= spark.createDataFrame(data)
+    ##On enleve tous les attributs qui ne rentrent pas dans les schema de nos deux dataframe
     d1=df.drop('archetype','desc','card_images','scale','banlist_info','format','sort','misc','staple','has_effect')
+    ##If la carte qu'on recoit possede des points d'atk c'est donc un monstre on l'ajoute au df des monstres
+    ##au df des magie/piege sinon
     if (StructField("atk",LongType(),True) in d1.schema):
         df_monster=df_monster.union(d1.drop('card_prices'))
     else:
         df_magic_trap=df_magic_trap.union(d1)
+    ##On fait les deux drop suivants sur des variables temporaires juste pour afficher le nombre de cartes presentes dans les df
     df_print_MT=df_magic_trap.drop('card_prices','card_sets')
     df_print_M=df_monster.drop('card_sets')
     print("Number of Magic_Trap cards in dataframe: "+ str(df_print_MT.distinct().count()))
     print("Number of Monster cards in dataframe: "+ str(df_print_M.distinct().count()))
+    ##On laisse les df se remplir de 10 cartes avant de lancer les visu
     if (count > 10) :
+        ##On remet count a 5 pour afficher les visualisations toutes les 5 iterations
         count=5
         goats=df_monster.sort(df_monster.atk.desc())
         print('les Monstres du plus fort au plus faible en atk :')
