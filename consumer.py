@@ -20,7 +20,7 @@ spark = (SparkSession
          .getOrCreate())
 spark.sparkContext.setLogLevel("WARN")
 c = KafkaConsumer('Cards', bootstrap_servers=['kafka:9093'], api_version=(2,6,0))
-##Le schema  d'une carte monstre apres nettoyage
+##Le schema d'une carte monstre apres nettoyage
 schema_monster = StructType([
   StructField('atk', LongType(), True),
   StructField('attribute', StringType(), True),
